@@ -19,13 +19,16 @@ fn main() {
 
     let tmp_out_path = Path::new(&in_path).with_extension(".s.tmp");
 
-    Command::new("rustc")
+    let success = Command::new("rustc")
         .arg("-o")
         .arg(&tmp_out_path)
         .args(["--emit", "asm"])
         .arg(&in_path)
-        .output()
-        .unwrap();
+        .status()
+        .unwrap()
+        .success();
+
+    assert!(success);
 
     let generated_asm = fs::read_to_string(&tmp_out_path).unwrap();
     fs::remove_file(tmp_out_path).unwrap();
@@ -47,5 +50,15 @@ fn main() {
     let executable_path = Path::new(&out_path).with_extension("");
     let executable_path = executable_path.display();
 
-    println!("gcc -o {executable_path} {out_path} ~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/libstd-de75e80c43801b1c.so")
+    let base_root = Command::new("rustc")
+        .arg("--print")
+        .arg("sysroot")
+        .output()
+        .unwrap()
+        .stdout;
+
+    let base_root = String::from_utf8(base_root).unwrap();
+    let base_root = base_root.trim();
+
+    println!("gcc -o {executable_path} {out_path} {base_root}/lib/libstd-*.so")
 }
